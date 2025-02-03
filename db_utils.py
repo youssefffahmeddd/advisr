@@ -12,7 +12,8 @@ def create_connection():
             host=current_app.config['DB_HOST'],
             user=current_app.config['DB_USER'],
             password=current_app.config['DB_PASSWORD'],
-            database=current_app.config['DB_NAME']
+            database=current_app.config['DB_NAME'],
+            port=app.config.get('DB_PORT', 3306)
         )
         return connection
     except Error as e:
