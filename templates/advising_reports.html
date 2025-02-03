@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advising Reports</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .search-form {
+            margin-bottom: 20px;
+        }
+        .search-form input[type="text"] {
+            padding: 5px;
+            width: 200px;
+        }
+        .search-form button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .student-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .student-list li {
+            margin-bottom: 5px;
+        }
+        .student-list button {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            text-align: left;
+            width: 100%;
+        }
+        .student-list button:hover {
+            text-decoration: underline;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Advising Reports</h1>
+
+        <div class="search-form">
+            <h2>Search for a Student</h2>
+            <form method="POST" action="{{ url_for('advising_reports') }}">
+                <input type="text" name="student_id" placeholder="Enter Student ID" required>
+                <button type="submit">Search</button>
+            </form>
+        </div>
+
+        <div class="student-list">
+            <h2>All Students</h2>
+            <ul>
+                {% for student in students %}
+                    <li>
+                        <form method="POST" action="{{ url_for('advising_reports') }}">
+                            <input type="hidden" name="student_id" value="{{ student.id }}">
+                            <button type="submit">
+                                {{ student.last_name }}, {{ student.first_name }} (ID: {{ student.id }})
+                            </button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        {% if selected_student %}
+            <div class="reports">
+                <h2>Advising Reports for {{ selected_student.first_name }} {{ selected_student.last_name }}</h2>
+                {% if reports %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Semester</th>
+                                <th>Course</th>
+                                <th>Comments</th>
+                                <th>Warning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in reports %}
+                                <tr>
+                                    <td>{{ report.semester_name }}</td>
+                                    <td>{{ report.course_name }}</td>
+                                    <td>{{ report.comments or 'No comments' }}</td>
+                                    <td>
+                                        {% if report.warning_attachment %}
+                                            <a href="{{ report.warning_attachment }}" target="_blank">View Warning</a>
+                                        {% else %}
+                                            No warnings
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No advising reports found for this student.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('input[name="student_id"]');
+            const studentList = document.querySelector('.student-list ul');
+            const students = studentList.querySelectorAll('li');
+
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                students.forEach(function(student) {
+                    const text = student.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        student.style.display = '';
+                    } else {
+                        student.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

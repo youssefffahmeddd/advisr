@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard | ADVISR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/ADVISR.png') }}" type="image/x-icon">
+</head>
+<body>
+    <div class="dashboard">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">ADVISR</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#overview" class="active"><i class="fas fa-chart-line"></i> Overview</a></li>
+                <li><a href="#transcript"><i class="fas fa-scroll"></i> Transcript</a></li>
+                <li><a href="#recommendations"><i class="fas fa-book"></i> Recommended Courses</a></li>
+                <li><a href="#advisor-slots"><i class="fas fa-calendar-alt"></i> Advisor Slots</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h2>Welcome, {{ student_info.student_name|default('Student') }}! 👋</h2>
+                <p class="subtitle">Let's make your academic journey awesome!</p>
+            </header>
+
+            <section id="overview" class="dashboard-section">
+                <div class="card-grid">
+                    <div class="card student-info">
+                        <h3><i class="fas fa-user-graduate"></i> Student Info</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">Student ID</span>
+                                <span class="value">{{ student_info.student_ID|default('N/A') }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">GPA</span>
+                                <span class="value">{{ student_info.cumulative_gpa|default('N/A') }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Advisor</span>
+                                <span class="value">{{ student_info.advisor_name|default('N/A') }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card program-progress">
+                        <h3><i class="fas fa-tasks"></i> Program Progress</h3>
+                        <div class="progress-bar">
+                            <div class="progress" data-percentage="{{ student_info.completion_percentage|default(0) }}"></div>
+                        </div>
+                        <p class="progress-text">{{ student_info.completion_percentage|default(0) }}% Complete</p>
+                        <div class="progress-details">
+                            <div class="info-item">
+                                <span class="label">Total Hours</span>
+                                <span class="value">{{ student_info.program_total_hours|default('N/A') }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Completed</span>
+                                <span class="value">{{ student_info.total_credit_hours|default('N/A') }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Remaining</span>
+                                <span class="value">{{ student_info.remaining_credit_hours|default('N/A') }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if gpa_deficit > 0 %}
+                    <div class="card alert-card warning">
+                        <h3><i class="fas fa-exclamation-triangle"></i> GPA Deficit</h3>
+                        <p>Current deficit of {{ gpa_deficit }} grade points</p>
+                    </div>
+                    {% endif %}
+
+                    {% if probation_status %}
+                    <div class="card alert-card danger">
+                        <h3><i class="fas fa-exclamation-circle"></i> Probation Status</h3>
+                        <p>You have been on probation for {{ consecutive_semesters }} semesters</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section id="transcript" class="dashboard-section">
+                <h2 class="section-title"><i class="fas fa-scroll"></i> Academic Transcript</h2>
+                <div class="semester-container">
+                    {% for semester, courses in transcript.items() %}
+                    <div class="semester-card">
+                        <div class="semester-header" onclick="toggleSemester(this)">
+                            <h3>{{ semester }}</h3>
+                            <div class="semester-summary">
+                                <span class="credit-hours">Credits: {{ courses|sum(attribute='credit_hours') }}</span>
+                                <span class="semester-gpa">GPA: {{ (courses|sum(attribute='points') / courses|sum(attribute='credit_hours'))|round(2) }}</span>
+                            </div>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="semester-content">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Course Code</th>
+                                            <th>Course Name</th>
+                                            <th>Course Type</th>
+                                            <th>Credit Hours</th>
+                                            <th>Grade</th>
+                                            <th>Points</th>
+                                            <th>Repetition Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for course in courses %}
+                                        <tr>
+                                            <td class="course-code">{{ course.course_code }}</td>
+                                            <td>{{ course.course_name }}</td>
+                                            <td>{{ course.course_type }}</td>
+                                            <td class="text-center">{{ course.credit_hours }}</td>
+                                            <td class="grade text-center">{{ course.grade }}</td>
+                                            <td class="text-center">{{ course.points }}</td>
+                                            <td class="text-center">{{ course.repetition_count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section id="recommendations" class="dashboard-section">
+                <h3><i class="fas fa-book"></i> Recommended Courses</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Course Code</th>
+                                <th>Course Name</th>
+                                <th>Credit Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for course in recommended_courses %}
+                            <tr>
+                                <td>{{ course.course_code }}</td>
+                                <td>{{ course.course_name }}</td>
+                                <td>{{ course.credit_hours }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="advisor-slots" class="dashboard-section">
+                <h3><i class="fas fa-calendar-alt"></i> Reserve Advisor Slot</h3>
+                <div class="table-container">
+                    <table class="data-table" id="advisor-slots-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slot in advisor_slots %}
+                            <tr>
+                                <td>{{ slot.Date }}</td>
+                                <td>{{ slot.Start_Time }}</td>
+                                <td>{{ slot.End_Time }}</td>
+                                <td>
+                                    <button class="btn-reserve" data-slot-id="{{ slot.Slot_ID }}">Reserve</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const advisorSlotsTable = document.getElementById('advisor-slots-table');
+            
+                    advisorSlotsTable.addEventListener('click', function(event) {
+                        if (event.target.classList.contains('btn-reserve')) {
+                            const slotId = event.target.getAttribute('data-slot-id');
+                            reserveSlot(slotId, event.target);
+                        }
+                    });
+            
+                    function reserveSlot(slotId, button) {
+                        fetch('{{ url_for("student") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ slot_id: slotId })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert(data.message);
+                                updateAdvisorSlotsTable(data.updated_slots);
+                            } else {
+                                alert(data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('An error occurred while reserving the slot.');
+                        });
+                    }
+            
+                    function updateAdvisorSlotsTable(updatedSlots) {
+                        const tableBody = advisorSlotsTable.querySelector('tbody');
+                        tableBody.innerHTML = '';
+            
+                        updatedSlots.forEach(slot => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${slot.Date}</td>
+                                <td>${slot.Start_Time}</td>
+                                <td>${slot.End_Time}</td>
+                                <td>
+                                    <button class="btn-reserve" data-slot-id="${slot.Slot_ID}">Reserve</button>
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    }
+                });
+                </script>
+        </main>
+    </div>
+
+    <div id="chat-popup" class="chat-popup">
+        <div class="chat-header">
+            <h3><i class="fas fa-comments"></i> Chatroom</h3>
+            <button id="close-chat" class="close-chat">&times;</button>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Chat messages will be dynamically loaded here -->
+        </div>
+        <form class="chat-form" id="chat-form">
+            <input type="text" id="chat-input" placeholder="Type your message...">
+            <button type="submit" class="btn-send"><i class="fas fa-paper-plane"></i></button>
+        </form>
+    </div>
+
+    <button id="open-chat" class="open-chat"><i class="fas fa-comments"></i></button>
+
+    <script>
+        function toggleSemester(header) {
+            const card = header.closest('.semester-card');
+            card.classList.toggle('expanded');
+            const icon = header.querySelector('.fa-chevron-down');
+            icon.style.transform = card.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0)';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize first semester as expanded
+            const firstSemester = document.querySelector('.semester-card');
+            if (firstSemester) {
+                firstSemester.classList.add('expanded');
+                const icon = firstSemester.querySelector('.fa-chevron-down');
+                icon.style.transform = 'rotate(180deg)';
+            }
+        });
+    </script>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
+

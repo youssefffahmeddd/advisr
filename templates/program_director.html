@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Program Director Settings | ADVISR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/ADVISR.png') }}" type="image/x-icon">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        .student-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .student-card {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+        .student-card:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        .student-card.selected {
+            background-color: #e7f5ff;
+            border-color: #4dabf7;
+        }
+        .student-card label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .student-card input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+        .filter-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .search-box {
+            flex-grow: 1;
+            margin-right: 1rem;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background-color: #e9ecef;
+            color: #495057;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .filter-btn:hover, .filter-btn.active {
+            background-color: #4dabf7;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <button class="sidebar-toggle" id="sidebarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">ADVISR</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('advisor') }}" class="sidebar-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="{{ url_for('program_director') }}" class="sidebar-link active"><i class="fas fa-users-cog"></i> Assign Students</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h2>Program Director Settings</h2>
+                <p class="subtitle">Batch Assign Students to Advisors</p>
+            </header>
+            <div class="container">
+                <section class="dashboard-section">
+                    <h3 class="section-title"><i class="fas fa-user-plus"></i> Batch Assign Students</h3>
+                    
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="flash-message {{ category }}">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+            
+                    <form method="POST" action="{{ url_for('program_director') }}" class="styled-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="new_advisor_id">Select New Advisor:</label>
+                                <select name="new_advisor_id" id="new_advisor_id" required class="custom-select">
+                                    <option value="">Choose an advisor</option>
+                                    {% for advisor in advisors %}
+                                        <option value="{{ advisor.advisor_ID }}">
+                                            {{ advisor.advisor_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="student-list">
+                            <h4>Select Students to Assign:</h4>
+                            <div class="filter-controls">
+                                <input type="text" id="search-students" class="search-box" placeholder="Search students...">
+                                <div class="filter-buttons">
+                                    <button type="button" class="filter-btn active" data-filter="all">All</button>
+                                    <button type="button" class="filter-btn" data-filter="unassigned">Unassigned</button>
+                                    <button type="button" class="filter-btn" data-filter="assigned">Assigned</button>
+                                </div>
+                            </div>
+                            <div class="student-grid">
+                                {% for student in unassigned_students + assigned_students %}
+                                    <div class="student-card" data-status="{{ 'unassigned' if student in unassigned_students else 'assigned' }}">
+                                        <label for="student_{{ student.student_ID }}">
+                                            <input type="checkbox" name="student_ids[]" value="{{ student.student_ID }}" id="student_{{ student.student_ID }}" class="custom-checkbox">
+                                            <span>{{ student.student_name }}</span>
+                                        </label>
+                                        <p class="student-info">
+                                            {% if student in unassigned_students %}
+                                                (Unassigned)
+                                            {% else %}
+                                                (Current: {{ student.advisor_name }})
+                                            {% endif %}
+                                        </p>
+                                        <p class="student-gpa">GPA: {{ student.cumulative_gpa }}</p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary">Assign Selected Students</button>
+                    </form>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div class="morphing-bg"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const mainContent = document.querySelector('.main-content');
+
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('active');
+                mainContent.classList.toggle('main-content-full');
+            });
+
+            // Search functionality
+            const searchInput = document.getElementById('search-students');
+            const studentCards = document.querySelectorAll('.student-card');
+
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                studentCards.forEach(card => {
+                    const studentName = card.querySelector('label span').textContent.toLowerCase();
+                    if (studentName.includes(searchTerm)) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+
+            // Filter functionality
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const filter = this.dataset.filter;
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    studentCards.forEach(card => {
+                        if (filter === 'all' || card.dataset.status === filter) {
+                            card.style.display = '';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            });
+
+            // Select/Deselect functionality
+            studentCards.forEach(card => {
+                const checkbox = card.querySelector('input[type="checkbox"]');
+                card.addEventListener('click', function(e) {
+                    if (e.target !== checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                    }
+                    card.classList.toggle('selected', checkbox.checked);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+

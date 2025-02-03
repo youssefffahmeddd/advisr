@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advising | ADVISR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/ADVISR.png') }}" type="image/x-icon">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">ADVISR</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('headofadvising') }}" id="dashboard-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="#student-search"><i class="fas fa-search"></i> Search Student</a></li>
+                <li><a href="#gpa-trend"><i class="fas fa-chart-line"></i> GPA Chart</a></li>
+                <li><a href="#transcript"><i class="fas fa-scroll"></i> Student Transcript</a></li>
+                <li><a href="#recommended-courses"><i class="fas fa-book-open"></i> Recommended Courses</a></li>
+                <li><a href="#unfinished_courses"><i class="fas fa-chevron-down"></i> Unfinished Courses</a></li>
+                <li><a href="#customize-recommendations"><i class="fas fa-edit"></i> Customize Recommendations</a></li>
+                <li><a href="#updated-recommended-courses"><i class="fas fa-book-open"></i> Updated Recommended Courses</a></li>
+                <li><a href="#gpa_calculator"><i class="fas fa-calculator"></i> GPA Calculator</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h2>Advising</h2>
+                <p class="subtitle">Search and advise students</p>
+            </header>
+
+            <section id="student-search" class="dashboard-section">
+                <h2 class="section-title"><i class="fas fa-search"></i> Student Search</h2>
+                <div class="card">
+                    <form method="POST" action="{{ url_for('headadvising') }}" class="search-form">
+                        <input type="hidden" name="search_student" value="1">
+                        <div class="form-group">
+                            <input type="text" name="student_id" placeholder="Enter Student ID" required>
+                            <button type="submit" class="btn-primary">Search</button>
+                        </div>
+                    </form>
+
+                    {% if student_info %}
+                    <div class="card-grid">
+                        <div class="card student-info">
+                            <h3><i class="fas fa-user-graduate"></i> Student Info</h3>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="label">Student ID</span>
+                                    <span class="value">{{ student_info.student_ID }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="label">Name</span>
+                                    <span class="value">{{ student_info.student_name }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="label">GPA</span>
+                                    <span class="value">{{ student_info.cumulative_gpa }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="label">Remaining Credit Hours</span>
+                                    <span class="value">{{ student_info.remaining_credit_hours }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if gpa_deficit > 0 %}
+                        <div class="card alert-card warning">
+                            <h3><i class="fas fa-exclamation-triangle"></i> GPA Deficit</h3>
+                            <p>Current deficit of {{ gpa_deficit }} grade points</p>
+                        </div>
+                        {% endif %}
+
+                        {% if probation_status %}
+                        <div class="card alert-card danger">
+                            <h3><i class="fas fa-exclamation-circle"></i> Probation Status</h3>
+                            <p>Student has been on probation for {{ consecutive_semesters }} semesters</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <section id="gpa-trend" class="dashboard-section">
+                        <h2 class="section-title"><i class="fas fa-chart-line"></i> GPA Trend</h2>
+                        <div class="card">
+                            <canvas id="gpaChart"></canvas>
+                        </div>
+                    </section>
+
+                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                    <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const ctx = document.getElementById('gpaChart').getContext('2d');
+                        let chart = null;
+
+                        function createChart(data) {
+                            if (!Array.isArray(data) || data.length === 0) {
+                                console.error('Invalid or empty data received');
+                                return;
+                            }
+
+                            const labels = data.map(item => item.semester_name);
+                            const semesterGPA = data.map(item => item.semester_gpa);
+                            const cumulativeGPA = data.map(item => item.cumulative_gpa);
+
+                            if (chart) {
+                                chart.destroy();
+                            }
+
+                            chart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [
+                                    {
+                                        label: 'Semester GPA',
+                                        data: semesterGPA,
+                                        borderColor: 'rgb(75, 192, 192)',
+                                        tension: 0.1
+                                    },
+                                    {
+                                        label: 'Cumulative GPA',
+                                        data: cumulativeGPA,
+                                        borderColor: 'rgb(255, 99, 132)',
+                                        tension: 0.1
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    x: {
+                                        grid: {
+                                            display: false // Disable X-axis grid lines
+                                        }
+                                    },
+                                    y: {
+                                        grid: {
+                                            drawBorder: false, // Remove the Y-axis border line
+                                            display: false // Disable Y-axis grid lines
+                                        },
+                                        ticks: {
+                                            display: false // Hide Y-axis labels
+                                        },
+                                        beginAtZero: false,
+                                        min: 0,
+                                        max: 4
+                                    }
+                                },
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'GPA Trend Over Semesters'
+                                    }
+                                }
+                            }
+                        });
+
+                        }
+
+                        function getStudentId() {
+                            const studentIdInput = document.querySelector('input[name="student_id"]');
+                            if (studentIdInput && studentIdInput.value) {
+                                return studentIdInput.value;
+                            }
+
+                            const studentInfoCard = document.querySelector('.student-info');
+                            if (studentInfoCard) {
+                                const studentIdValue = studentInfoCard.querySelector('.value').textContent;
+                                if (studentIdValue) {
+                                    return studentIdValue.trim();
+                                }
+                            }
+
+                            const studentIdHidden = document.querySelector('input[name="hidden_student_id"]');
+                            if (studentIdHidden && studentIdHidden.value) {
+                                return studentIdHidden.value;
+                            }
+
+                            return null;
+                        }
+
+                        function updateChart() {
+                            const studentId = getStudentId();
+                            if (studentId) {
+                                const requestData = {
+                                    get_semester_data: 1,
+                                    user_id: studentId
+                                };
+
+                                fetch("{{ url_for('headadvising') }}", {
+                                    method: 'POST',
+                                    body: JSON.stringify(requestData),
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'Content-Type': 'application/json'
+                                    }
+                                })
+                                .then(response => {
+                                    if (!response.ok) {
+                                        if (response.status === 404) {
+                                            throw new Error('No semester data found for this student.');
+                                        } else {
+                                            throw new Error(`HTTP error! status: ${response.status}`);
+                                        }
+                                    }
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    if (data.error) {
+                                        throw new Error(data.error);
+                                    } else if (Array.isArray(data) && data.length > 0) {
+                                        createChart(data);
+                                    } else {
+                                        throw new Error('No semester data available for this student.');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    if (chart) {
+                                        chart.destroy();
+                                        chart = null;
+                                    }
+                                });
+                            }
+                        }
+
+                        // Call updateChart when the page loads
+                        updateChart();
+
+                        const searchForm = document.querySelector('form.search-form');
+                        if (searchForm) {
+                            searchForm.addEventListener('submit', function(event) {
+                                event.preventDefault();
+                                updateChart();
+                            });
+                        }
+
+                        const observer = new MutationObserver((mutations) => {
+                            for (let mutation of mutations) {
+                                if (mutation.type === 'childList') {
+                                    mutation.addedNodes.forEach((node) => {
+                                        if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('student-info')) {
+                                            updateChart();
+                                        }
+                                    });
+                                }
+                            }
+                        });
+
+                        observer.observe(document.body, { childList: true, subtree: true });
+                    });
+                    </script>
+
+
+
+
+
+
+                    {% if transcript %}
+                    <h2 class="section-title"><i class="fas fa-scroll"></i> Academic Transcript</h2>
+                    <div class="semester-container">
+                        {% for semester, courses in transcript.items() %}
+                        <div class="semester-card">
+                            <div class="semester-header" onclick="toggleSemester(this)">
+                                <h3>{{ semester }}</h3>
+                                <div class="semester-summary">
+                                    <span class="credit-hours">Credits: {{ courses|sum(attribute='credit_hours') }}</span>
+                                    <span class="semester-gpa">GPA: {{ (courses|sum(attribute='points') / courses|sum(attribute='credit_hours'))|round(2) }}</span>
+                                </div>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="semester-content">
+                                <div class="table-container">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Course Code</th>
+                                                <th>Course Name</th>
+                                                <th>Course Type</th>
+                                                <th>Credit Hours</th>
+                                                <th>Grade</th>
+                                                <th>Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for course in courses %}
+                                            <tr>
+                                                <td>{{ course.course_code }}</td>
+                                                <td>{{ course.course_name }}</td>
+                                                <td>{{ course.course_type }}</td>
+                                                <td>{{ course.credit_hours }}</td>
+                                                <td>{{ course.grade }}</td>
+                                                <td>{{ course.points }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                    <!-- Debug: {{ recommended_courses }} -->
+                    <section id="recommended-courses" class="dashboard-section">
+                        <h2 class="section-title"><i class="fas fa-book-open"></i> Recommended Courses</h2>
+                        {% if recommended_courses %}
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Course Code</th>
+                                        <th>Course Name</th>
+                                        <th>Credit Hours</th>
+                                        <th>Course Type</th>
+                                        <th>Semester</th>
+                                        <th>Prerequisite</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for course in recommended_courses %}
+                                    <tr>
+                                        <td>{{ course.course_code }}</td>
+                                        <td>{{ course.course_name }}</td>
+                                        <td>{{ course.credit_hours }}</td>
+                                        <td>{{ course.course_type }}</td>
+                                        <td>{{ course.semester }}</td>
+                                        <td>{{ course.prerequisite or 'None' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p>No recommended courses available.</p>
+                        {% endif %}
+                    </section>
+
+                    <section id="unfinished_courses" class="dashboard-section">
+                        <div class="semester-card">
+                            <div class="semester-header" onclick="toggleSemester(this)">
+                                <h3>Unfinished Courses</h3>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="semester-content">
+                                <div class="table-container">
+                                    {% if unfinished_courses %}
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Course Code</th>
+                                                    <th>Course Name</th>
+                                                    <th>Credit Hours</th>
+                                                    <th>Course Type</th>
+                                                    <th>Grade</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for course in unfinished_courses %}
+                                                <tr>
+                                                    <td>{{ course['Course Code'] }}</td>
+                                                    <td>{{ course['Course Name'] }}</td>
+                                                    <td>{{ course['Credit Hours'] }}</td>
+                                                    <td>{{ course['Course Type'] }}</td>
+                                                    <td>{{ course['Grade'] or 'New Course' }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    {% else %}
+                                        <p>Student Satisfied All Courses.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+
+
+
+                    <section id="customize-recommendations" class="dashboard-section">
+                        <h2 class="section-title"><i class="fas fa-edit"></i> Customize Recommendations</h2>
+                        {% if student_info %}
+                        <input type="hidden" id="current_user_id" value="{{ student_info.user_ID }}">    
+                        <div class="dropdown-container">
+                                <!-- Core Elective Dropdown -->
+                                <div class="dropdown-group">
+                                    <label for="core-elective">Core Elective:</label>
+                                    <select id="core-elective" class="course-dropdown">
+                                        <option value="">Select a Core Elective</option>
+                                        {% for course in core_electives %}
+                                            <option value="{{ course['course_ID'] }}">{{ course['Course Code'] }} - {{ course['Course Name'] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button onclick="addCourse('core-elective')" class="btn-primary">Add</button>
+                                </div>
+                    
+                                <!-- University Elective Dropdown -->
+                                <div class="dropdown-group">
+                                    <label for="university-elective">University Elective:</label>
+                                    <select id="university-elective" class="course-dropdown">
+                                        <option value="">Select a University Elective</option>
+                                        {% for course in university_electives %}
+                                            <option value="{{ course['course_ID'] }}">{{ course['Course Code'] }} - {{ course['Course Name'] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button onclick="addCourse('university-elective')" class="btn-primary">Add</button>
+                                </div>
+                    
+                                <!-- Core Dropdown -->
+                                <div class="dropdown-group">
+                                    <label for="core">Core:</label>
+                                    <select id="core" class="course-dropdown">
+                                        <option value="">Select a Core Course</option>
+                                        {% for course in core_courses %}
+                                            <option value="{{ course['course_ID'] }}">{{ course['Course Code'] }} - {{ course['Course Name'] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button onclick="addCourse('core')" class="btn-primary">Add</button>
+                                </div>
+                    
+                                <!-- University Requirement Dropdown -->
+                                <div class="dropdown-group">
+                                    <label for="university-requirement">University Requirement:</label>
+                                    <select id="university-requirement" class="course-dropdown">
+                                        <option value="">Select a University Requirement</option>
+                                        {% for course in university_requirements %}
+                                            <option value="{{ course['course_ID'] }}">{{ course['Course Code'] }} - {{ course['Course Name'] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button onclick="addCourse('university-requirement')" class="btn-primary">Add</button>
+                                </div>
+                            </div>
+                        {% else %}
+                            <p>Please search for a student to customize recommendations.</p>
+                        {% endif %}
+                    </section>
+                    
+                    <script>
+                        function addCourse(dropdownId) {
+                            console.log('Starting addCourse function');
+                            console.log('Dropdown ID received:', dropdownId);
+                        
+                            const select = document.querySelector(`select[id="${dropdownId}"]`);
+                            console.log('Select element found:', select);
+                        
+                            if (!select) {
+                                console.error(`Dropdown with ID ${dropdownId} not found`);
+                                alert('Error: Could not find the course selection dropdown.');
+                                return;
+                            }
+                        
+                            const courseId = select.value;
+                            console.log('Course ID:', courseId);
+                        
+                            if (!courseId) {
+                                console.error('No course selected');
+                                alert('Please select a course from the dropdown menu.');
+                                return;
+                            }
+                        
+                            const userIdElement = document.getElementById('current_user_id');
+                            if (!userIdElement) {
+                                console.error('User ID element not found');
+                                alert('Error: User ID not found. Please search for a student first.');
+                                return;
+                            }
+                        
+                            const userId = userIdElement.value;
+                            console.log('User ID:', userId);
+                        
+                            if (!userId) {
+                                console.error('No user ID found');
+                                alert('Please search for a student first.');
+                                return;
+                            }
+                        
+                            const formData = new FormData();
+                            formData.append('add_course', '1');
+                            formData.append('course_id', courseId);
+                            formData.append('user_id', userId);
+                        
+                            console.log('Form data:', {
+                                add_course: formData.get('add_course'),
+                                course_id: formData.get('course_id'),
+                                user_id: formData.get('user_id')
+                            });
+                        
+                            fetch("{{ url_for('advising') }}", {
+                                method: 'POST',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: formData
+                            })
+                            .then(response => {
+                                console.log('Response status:', response.status);
+                                return response.json();
+                            })
+                            .then(data => {
+                                console.log('Response data:', data);
+                                if (data.success) {
+                                    alert(data.message);
+                                    location.reload();
+                                } else {
+                                    alert(data.message || 'Error adding course');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('An error occurred while adding the course. Please try again.');
+                            });
+                        }
+                        
+                        // Add this helper function to log the current state of all dropdowns
+                        function logDropdownStates() {
+                            const dropdowns = document.querySelectorAll('select.course-dropdown');
+                            dropdowns.forEach(dropdown => {
+                                console.log(`Dropdown ${dropdown.id}:`, {
+                                    value: dropdown.value,
+                                    selectedIndex: dropdown.selectedIndex,
+                                    selectedOption: dropdown.options[dropdown.selectedIndex]?.text || 'none'
+                                });
+                            });
+                        }
+                        
+                        // Call this when the page loads
+                        document.addEventListener('DOMContentLoaded', () => {
+                            logDropdownStates();
+                            
+                            // Log the user ID element and its value
+                            const userIdElement = document.getElementById('current_user_id');
+                            console.log('User ID element:', userIdElement);
+                            console.log('User ID value:', userIdElement ? userIdElement.value : 'Not found');
+                        });
+                        </script>
+                    
+                    <section id="updated-recommended-courses" class="dashboard-section">
+                        <h2 class="section-title"><i class="fas fa-book-open"></i> Updated Recommended Courses</h2>
+                        {% if updated_recommended_courses %}
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Course Code</th>
+                                        <th>Course Name</th>
+                                        <th>Credit Hours</th>
+                                        <th>Course Type</th>
+                                        <th>Semester</th>
+                                        <th>Prerequisite</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for course in updated_recommended_courses %}
+                                    <tr id="course-row-{{ course.id }}">
+                                        <td>{{ course.course_code }}</td>
+                                        <td>{{ course.course_name }}</td>
+                                        <td>{{ course.credit_hours }}</td>
+                                        <td>{{ course.course_type }}</td>
+                                        <td>{{ course.semester }}</td>
+                                        <td>{{ course.prerequisite or 'None' }}</td>
+                                        <td>
+                                            <button class="btn-danger" data-course-id="{{ course.id }}">Delete</button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p>No recommended courses available.</p>
+                        {% endif %}
+                    </section>
+                    
+                    <script>
+                    function deleteCourse(id) {
+                        if (confirm('Are you sure you want to delete this course?')) {
+                            fetch("{{ url_for('advising') }}", {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: 'delete_course=1&id=' + id
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.success) {
+                                    // Remove the course row from the table
+                                    const courseRow = document.getElementById('course-row-' + id);
+                                    if (courseRow) {
+                                        courseRow.remove();
+                                        // Show a success message
+                                        alert(data.message);
+                                    } else {
+                                        console.error('Course row not found:', id);
+                                    }
+                                } else {
+                                    // Show an error message
+                                    alert(data.message || 'An error occurred while deleting the course.');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('An error occurred while deleting the course. Please try again.');
+                            });
+                        }
+                    }
+                    
+                    // Add event listeners to all delete buttons
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const deleteButtons = document.querySelectorAll('.btn-danger');
+                        deleteButtons.forEach(button => {
+                            button.addEventListener('click', function(event) {
+                                event.preventDefault();
+                                const courseId = this.getAttribute('data-course-id');
+                                deleteCourse(courseId);
+                            });
+                        });
+                    });
+                    </script>
+                
+                <section id="gpa_calculator" class="dashboard-section">
+                    <h2 class="section-title"><i class="fas fa-calculator"></i> GPA Calculator</h2>
+                    {% if student_info %}
+                    <input type="hidden" id="current_user_id" value="{{ student_info.user_ID }}">
+                    <div class="gpa-calculator-form">
+                        <div class="form-group">
+                            <label for="course-select">Select Course:</label>
+                            <select id="course-select" name="course">
+                                <option value="">Select a course</option>
+                                <optgroup label="Study Plan Courses">
+                                    {% for course in calculator_data.study_plan_courses %}
+                                        <option value="{{ course.course_code }}" data-credit-hours="{{ course.credit_hours }}" data-type="study_plan">
+                                            {{ course.course_code }} - {{ course.course_name }}
+                                        </option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="Transcript Courses">
+                                    {% for course in calculator_data.transcript %}
+                                        <option value="{{ course.course_code }}" data-credit-hours="{{ course.credit_hours }}" data-type="transcript" data-current-grade="{{ course.grade }}">
+                                            {{ course.course_code }} - Current Grade: {{ course.grade }}
+                                        </option>
+                                    {% endfor %}
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="grade-select">Select Grade:</label>
+                            <select id="grade-select" name="grade">
+                                <option value="A+">A+</option>
+                                <option value="A">A</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B">B</option>
+                                <option value="B-">B-</option>
+                                <option value="C+">C+</option>
+                                <option value="C">C</option>
+                                <option value="C-">C-</option>
+                                <option value="D+">D+</option>
+                                <option value="D">D</option>
+                                <option value="F">F</option>
+                            </select>
+                        </div>
+                        <button id="add-course" class="btn-primary">Add Course</button>
+                    </div>
+                    <div id="selected-courses-table" class="selected-courses-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Course Code</th>
+                                    <th>Credit Hours</th>
+                                    <th>Current Grade</th>
+                                    <th>New Grade</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="selected-courses-body">
+                            </tbody>
+                        </table>
+                    </div>
+                    <button id="calculate-gpa" class="btn-primary">Calculate GPA</button>
+                    <div id="gpa-result" class="gpa-result" style="display: none;">
+                        <p>Updated Cumulative GPA: <span id="updated-gpa"></span></p>
+                        <p>GPA Deficit: <span id="gpa-deficit"></span></p>
+                    </div>
+                    {% else %}
+                    <p>Please search for a student to use the GPA calculator.</p>
+                    {% endif %}
+                </section>                     
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const addCourseButton = document.getElementById('add-course');
+                        const calculateButton = document.getElementById('calculate-gpa');
+                        const resultDiv = document.getElementById('gpa-result');
+                        const updatedGpaSpan = document.getElementById('updated-gpa');
+                        const gpaDeficitSpan = document.getElementById('gpa-deficit');
+                        const courseSelect = document.getElementById('course-select');
+                        const gradeSelect = document.getElementById('grade-select');
+                        const selectedCoursesBody = document.getElementById('selected-courses-body');
+
+                        const selectedCourses = [];
+
+                        addCourseButton.addEventListener('click', function() {
+                            if (!courseSelect.value) {
+                                alert('Please select a course.');
+                                return;
+                            }
+
+                            const selectedOption = courseSelect.options[courseSelect.selectedIndex];
+                            const courseCode = selectedOption.value;
+                            const creditHours = selectedOption.dataset.creditHours;
+                            const courseType = selectedOption.dataset.type;
+                            const currentGrade = courseType === 'transcript' ? selectedOption.dataset.currentGrade : 'N/A';
+                            const newGrade = gradeSelect.value;
+
+                            // Check if course is already added
+                            if (selectedCourses.some(course => course.course_code === courseCode)) {
+                                alert('This course has already been added.');
+                                return;
+                            }
+
+                            selectedCourses.push({
+                                course_code: courseCode,
+                                credit_hours: creditHours,
+                                current_grade: currentGrade,
+                                new_grade: newGrade,
+                                course_type: courseType
+                            });
+                            updateSelectedCoursesTable();
+
+                            // Reset selections
+                            courseSelect.value = '';
+                            gradeSelect.value = 'A+';
+                        });
+
+                        function updateSelectedCoursesTable() {
+                            selectedCoursesBody.innerHTML = '';
+                            selectedCourses.forEach((course, index) => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${course.course_code}</td>
+                                    <td>${course.credit_hours}</td>
+                                    <td>${course.current_grade}</td>
+                                    <td>${course.new_grade}</td>
+                                    <td><button onclick="removeCourse(${index})" class="btn-danger">Remove</button></td>
+                                `;
+                                selectedCoursesBody.appendChild(row);
+                            });
+                        }
+
+                        window.removeCourse = function(index) {
+                            selectedCourses.splice(index, 1);
+                            updateSelectedCoursesTable();
+                        }
+
+                        calculateButton.addEventListener('click', function() {
+                            const userId = document.getElementById('current_user_id').value;
+
+                            if (!userId) {
+                                alert('User ID not found. Please refresh the page and try again.');
+                                return;
+                            }
+
+                            if (selectedCourses.length === 0) {
+                                alert('Please add at least one course before calculating GPA.');
+                                return;
+                            }
+
+                            fetch("/advising", {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: JSON.stringify({
+                                    action: 'calculate_gpa',
+                                    user_id: userId,
+                                    courses: selectedCourses
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    updatedGpaSpan.textContent = parseFloat(data.updated_gpa).toFixed(2);
+                                    gpaDeficitSpan.textContent = parseFloat(data.gpa_deficit).toFixed(2);
+                                    resultDiv.style.display = 'block';
+                                } else {
+                                    alert(data.message || 'An error occurred while calculating GPA.');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('An error occurred while calculating GPA. Please try again.');
+                            });
+                        });
+                    });
+                </script>
+
+                </div>
+            </section>
+
+        </main>
+    </div>
+    <script>
+        function toggleSemester(header) {
+            const card = header.closest('.semester-card');
+            card.classList.toggle('expanded');
+            const icon = header.querySelector('.fa-chevron-down');
+            icon.style.transform = card.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0)';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize first semester as expanded
+            const firstSemester = document.querySelector('.semester-card');
+            if (firstSemester) {
+                firstSemester.classList.add('expanded');
+                const icon = firstSemester.querySelector('.fa-chevron-down');
+                icon.style.transform = 'rotate(180deg)';
+            }
+        });
+    </script>
+</body>
+</html>
+

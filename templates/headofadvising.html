@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head of Advising Dashboard | ADVISR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/ADVISR.png') }}" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        .program-chart {
+            width: 300px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">ADVISR</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('headadvising') }}" class="sidebar-link"><i class="fas fa-user-graduate"></i> Advising</a></li>
+                <li><a href="#student-summary"><i class="fas fa-user"></i> Students Summary</a></li>
+                <li><a href="#program-summary"><i class="fas fa-university"></i> Programs Summary</a></li>
+                <li><a href="#availability"><i class="fas fa-calendar-alt"></i> Availability</a></li>
+                <li><a href="{{ url_for('update_config') }}" class="sidebar-link"><i class="fas fa-user-graduate"></i> Configurations</a></li>
+                <li><a href="{{ url_for('advising_reports') }}" class="sidebar-link"><i class="fas fa-user-graduate"></i> Advising Reports</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h2>Welcome, Dr. Hala El Ganzoury! 👋</h2>
+                <p class="subtitle">Manage your schedule and assist students</p>
+            </header>
+
+            <section id="student-summary" class="dashboard-section">
+                {% if students_data %}
+                <div class="card student-info">
+                    <h3><i class="fas fa-user-graduate"></i> University Students Summary</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">Total University Students</span>
+                            <span class="value">{{ students_data.total_students }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Total Students Under Probation</span>
+                            <span class="value">{{ students_data.students_on_probation }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+
+            <section id="program-summary" class="dashboard-section" style="margin-bottom: 2rem;">
+                <div class="card program-info" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); padding: 1.5rem;">
+                    <h3>
+                        <i class="fas fa-university"></i> Programs Summary
+                    </h3>
+                    <div class="chart-container">
+                        {% for program in program_summary %}
+                        <div class="program-chart">
+                            <canvas id="programChart{{ loop.index }}"></canvas>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <section id="availability" class="dashboard-section">
+                <h2 class="section-title"><i class="fas fa-calendar-alt"></i> Set Your Availability</h2>
+                <div class="card">
+                    <form id="availability-form" method="POST" action="{{ url_for('headofadvising') }}">
+                        <input type="hidden" name="set_availability" value="1">
+                        <div class="form-group">
+                            <label for="slot-date">Date</label>
+                            <input type="date" id="slot-date" name="slot_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="start-time">Start Time</label>
+                            <input type="time" id="start-time" name="start_time" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="end-time">End Time</label>
+                            <input type="time" id="end-time" name="end_time" required>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn-primary">Add Slot</button>
+                        </div>
+                    </form>
+
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Status</th>
+                                    <th>Reserved By</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for slot in availability_slots %}
+                                <tr>
+                                    <td>{{ slot.Date }}</td>
+                                    <td>{{ slot.Start_Time }}</td>
+                                    <td>{{ slot.End_Time }}</td>
+                                    <td>{{ "Reserved" if slot.Reserved == "Yes" else "Available" }}</td>
+                                    <td>{{ slot.Student_ID }}</td>
+                                    <td>
+                                        {% if slot.Reserved == "No" %}
+                                        <form method="POST" action="{{ url_for('headofadvising') }}" style="display: inline;">
+                                            <input type="hidden" name="delete_slot" value="1">
+                                            <input type="hidden" name="slot_id" value="{{ slot.Slot_ID }}">
+                                            <button type="submit" class="btn-danger">Delete</button>
+                                        </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var programData = JSON.parse('{{ program_summary | tojson | safe }}');
+        
+        programData.forEach(function(program, index) {
+            var ctx = document.getElementById('programChart' + (index + 1)).getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Total Students', 'Students on Probation'],
+                    datasets: [{
+                        data: [
+                            program.total_students,
+                            program.students_on_probation
+                        ],
+                        backgroundColor: ['#4F46E5', '#34D399'],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: true,
+                            text: program.program_name
+                        }
+                    }
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html>
