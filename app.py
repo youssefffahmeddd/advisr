@@ -19,10 +19,11 @@ app = Flask(
 app.config['SECRET_KEY'] = 'sadcbshvshcvhdv'  # Replace with a secure secret key
 
 # Database configuration
-app.config['DB_HOST'] = 'localhost'
+app.config['DB_HOST'] = '41.34.206.254'
 app.config['DB_USER'] = 'root'
 app.config['DB_PASSWORD'] = ''
 app.config['DB_NAME'] = 'adv'
+app.config['DB_PORT'] = 3306
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt', 'png', 'jpg', 'jpeg', 'gif'}
